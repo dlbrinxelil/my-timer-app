@@ -1,0 +1,448 @@
+```html
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="monetag" content="40dced0f04c1e6903c0889c390c1715e">
+    <title>تطبيق الكبسة الموقوتة - 5 ثوانٍ</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Cairo & Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    },
+                    fontFamily: {
+                        cairo: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Continuous pulse ring animation for timer status */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.08); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+
+        .active-ring {
+            animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* Circular radial progress transition */
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.03s linear;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between selection:bg-indigo-500 selection:text-white antialiased">
+
+    <header class="w-full max-w-4xl mx-auto px-4 py-4 flex justify-between items-center border-b border-slate-800/80">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-stopwatch text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">تطبيق الكبسة الموقوتة</h1>
+                <p class="text-xs text-slate-400">تفعيل مؤقت الـ 5 ثوانٍ بدقة عالية</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="soundToggleBtn" onclick="toggleSound()" class="px-3 py-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-slate-300 hover:text-white transition flex items-center gap-2 text-xs font-semibold">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-indigo-400"></i>
+                <span id="soundText" class="hidden sm:inline">الصوت مفعّل</span>
+            </button>
+            <button onclick="openSettingsModal()" class="p-2.5 rounded-lg bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-slate-300 hover:text-white transition" aria-label="الإعدادات">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="w-full max-w-xl mx-auto px-4 py-6 flex-1 flex flex-col items-center justify-center">
+
+        <!-- Mode Selector Tabs -->
+        <div class="w-full bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 flex text-xs sm:text-sm font-semibold mb-8 shadow-inner">
+            <button id="modeTriggerBtn" onclick="setMode('trigger')" class="flex-1 py-2.5 rounded-xl transition duration-200 flex items-center justify-center gap-2 bg-indigo-600 text-white shadow-md shadow-indigo-600/30">
+                <i class="fa-solid fa-bolt"></i>
+                <span>ضغطة 5 ثوانٍ</span>
+            </button>
+            <button id="modeHoldBtn" onclick="setMode('hold')" class="flex-1 py-2.5 rounded-xl transition duration-200 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-hand-pointer"></i>
+                <span>تحدي التعليق</span>
+            </button>
+            <button id="modeAutoBtn" onclick="setMode('auto')" class="flex-1 py-2.5 rounded-xl transition duration-200 flex items-center justify-center gap-2 text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-rotate"></i>
+                <span>نبض متكرر</span>
+            </button>
+        </div>
+
+        <!-- Mode Info Banner -->
+        <div id="modeDescription" class="text-center mb-6 text-xs sm:text-sm text-slate-400 max-w-md bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800/60">
+            انقر الزر لتشغيل نشاط محدد بمدّة 5 ثوانٍ مع التبديل التلقائي عند الانتهاء.
+        </div>
+
+        <div class="relative flex flex-col items-center justify-center my-2">
+            
+            <!-- Dynamic ambient glow effect -->
+            <div id="glowRing" class="absolute w-72 h-72 sm:w-80 sm:h-80 rounded-full bg-indigo-600/20 blur-2xl transition duration-500 opacity-30"></div>
+
+            <!-- Canvas Radial Progress Ring -->
+            <div class="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
+                <svg class="w-full h-full" viewBox="0 0 100 100">
+                    <circle class="text-slate-800/80" stroke-width="6" stroke="currentColor" fill="transparent" r="42" cx="50" cy="50" />
+                    <circle id="progressCircle" class="progress-ring__circle text-indigo-500" stroke-width="6" stroke-linecap="round" stroke="currentColor" fill="transparent" r="42" cx="50" cy="50" stroke-dasharray="263.89" stroke-dashoffset="0" />
+                </svg>
+
+                <!-- Center Interactive Button -->
+                <button id="actionBtn" 
+                        onmousedown="handlePressStart(event)" 
+                        onmouseup="handlePressEnd(event)"
+                        mouseleave="handlePressEnd(event)"
+                        ontouchstart="handlePressStart(event)" 
+                        ontouchend="handlePressEnd(event)"
+                        class="absolute inset-4 rounded-full bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 border-4 border-slate-700/60 shadow-2xl flex flex-col items-center justify-center text-center p-4 group hover:border-indigo-500/80 active:scale-95 transition-all duration-150 cursor-pointer select-none outline-none">
+                    
+                    <div id="btnIcon" class="w-12 h-12 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mb-2 group-hover:scale-110 transition">
+                        <i class="fa-solid fa-power-off text-2xl"></i>
+                    </div>
+
+                    <div id="timerDisplay" class="text-3xl sm:text-4xl font-extrabold font-mono tracking-tight text-white mb-1">
+                        5.00s
+                    </div>
+
+                    <span id="btnLabel" class="text-xs font-semibold text-slate-400 group-hover:text-indigo-300">
+                        اضغط للبدء (5 ثوانٍ)
+                    </span>
+
+                    <span id="subStatus" class="text-[10px] text-slate-500 mt-1 h-3">
+                        جاهز للاستخدام
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 w-full mt-8">
+            <div class="bg-slate-900/70 border border-slate-800 p-3 rounded-xl text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">عدد الكبسات</span>
+                <span id="statPressCount" class="text-lg font-bold text-indigo-400 font-mono">0</span>
+            </div>
+            <div class="bg-slate-900/70 border border-slate-800 p-3 rounded-xl text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">الوقت الإجمالي</span>
+                <span id="statTotalTime" class="text-lg font-bold text-emerald-400 font-mono">0s</span>
+            </div>
+            <div class="bg-slate-900/70 border border-slate-800 p-3 rounded-xl text-center">
+                <span class="block text-[11px] text-slate-400 font-medium">أفضل دقة</span>
+                <span id="statBestAccuracy" class="text-lg font-bold text-amber-400 font-mono">---</span>
+            </div>
+        </div>
+
+        <!-- Action History Log Section -->
+        <div class="w-full mt-6 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xs font-bold text-slate-300 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-indigo-400"></i>
+                    سجل الضغطات الأخيرة
+                </h3>
+                <button onclick="clearLogs()" class="text-[11px] text-slate-500 hover:text-rose-400 transition">
+                    مسح السجل
+                </button>
+            </div>
+            <div id="logContainer" class="space-y-2 max-h-36 overflow-y-auto pr-1 text-xs text-slate-400 scrollbar-thin">
+                <div class="text-center text-slate-600 py-3 italic">لا توجد ضغطات مسجلة بعد.</div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-4xl mx-auto px-4 py-4 text-center text-xs text-slate-600 border-t border-slate-900">
+        تطبيق مؤقت الكبسة - 5 ثوانٍ &bull; جاهز للنشر والاستخدام
+    </footer>
+
+    <div id="settingsModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-6 shadow-2xl relative">
+            <div class="flex justify-between items-center mb-5 border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-indigo-400"></i>
+                    إعدادات المؤقت
+                </h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">
+                        مدة الكبسة: <span id="durationValueDisplay" class="text-indigo-400 font-mono">5</span> ثوانٍ
+                    </label>
+                    <input type="range" id="durationSlider" min="1" max="30" step="1" value="5" oninput="updateTargetDuration(this.value)"
+                        class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+                </div>
+
+                <div class="flex justify-between items-center py-2 border-t border-slate-800/80">
+                    <div>
+                        <span class="block text-xs font-semibold text-slate-200">اهتزاز اللمس</span>
+                        <span class="text-[10px] text-slate-500">اهتزاز عند الانتهاء (الهواتف الذكية)</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="vibrateToggle" checked class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-800 flex justify-end">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg transition">
+                    حفظ وإغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'trigger';
+        let targetDuration = 5.0;
+        let isSoundEnabled = true;
+        let isVibrationEnabled = true;
+        let isActive = false;
+        let startTime = 0;
+        let animationFrameId = null;
+        let autoIntervalId = null;
+
+        let pressCount = 0;
+        let totalActiveSeconds = 0;
+        let bestHoldDiff = null;
+
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) audioCtx = new AudioContextClass();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
+
+        function playBeep(frequency = 587.33, duration = 0.15, type = 'sine') {
+            if (!isSoundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+                gain.gain.setValueAtTime(0.15, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {
+                console.warn(e);
+            }
+        }
+
+        function playSuccessChime() {
+            if (!isSoundEnabled) return;
+            setTimeout(() => playBeep(587.33, 0.1, 'triangle'), 0);
+            setTimeout(() => playBeep(733.98, 0.1, 'triangle'), 100);
+            setTimeout(() => playBeep(880.00, 0.25, 'sine'), 200);
+        }
+
+        function triggerVibration(pattern = [100]) {
+            if (isVibrationEnabled && 'vibrate' in navigator) navigator.vibrate(pattern);
+        }
+
+        const circle = document.getElementById('progressCircle');
+        const radius = circle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        circle.style.strokeDasharray = `${circumference} ${circumference}`;
+
+        function setProgress(percent) {
+            const offset = circumference - (percent / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+        }
+
+        function startPressSession() {
+            if (isActive) return;
+
+            getAudioContext();
+            isActive = true;
+            startTime = performance.now();
+
+            document.getElementById('glowRing').classList.add('active-ring', 'opacity-80');
+            document.getElementById('actionBtn').classList.add('border-indigo-500', 'shadow-indigo-500/40');
+            
+            playBeep(440, 0.08, 'sine');
+
+            if (currentMode === 'hold') {
+                document.getElementById('btnLabel').innerText = 'اترك الكبسة عند 5.00s!';
+                document.getElementById('subStatus').innerText = 'جاري الحساب...';
+            } else {
+                document.getElementById('btnLabel').innerText = 'جاري التشغيل (5 ثوانٍ)...';
+                document.getElementById('subStatus').innerText = 'نشط الآن';
+            }
+
+            updateTimerFrame();
+        }
+
+        function updateTimerFrame() {
+            if (!isActive) return;
+
+            const elapsed = (performance.now() - startTime) / 1000;
+
+            if (currentMode === 'hold') {
+                document.getElementById('timerDisplay').innerText = elapsed.toFixed(2) + 's';
+                const percent = Math.min((elapsed / targetDuration) * 100, 100);
+                setProgress(percent);
+                animationFrameId = requestAnimationFrame(updateTimerFrame);
+            } else {
+                const remaining = Math.max(0, targetDuration - elapsed);
+                document.getElementById('timerDisplay').innerText = remaining.toFixed(2) + 's';
+                const percent = ((targetDuration - remaining) / targetDuration) * 100;
+                setProgress(percent);
+
+                if (remaining > 0) {
+                    animationFrameId = requestAnimationFrame(updateTimerFrame);
+                } else {
+                    completeSession(targetDuration);
+                }
+            }
+        }
+
+        function completeSession(durationAchieved) {
+            isActive = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            playSuccessChime();
+            triggerVibration([70, 50, 120]);
+
+            document.getElementById('glowRing').classList.remove('active-ring', 'opacity-80');
+            document.getElementById('actionBtn').classList.remove('border-indigo-500', 'shadow-indigo-500/40');
+
+            pressCount++;
+            totalActiveSeconds += parseFloat(durationAchieved);
+            document.getElementById('statPressCount').innerText = pressCount;
+            document.getElementById('statTotalTime').innerText = totalActiveSeconds.toFixed(1) + 's';
+
+            let resultDetail = 'اكتملت 5 ثوانٍ بالكامل';
+            document.getElementById('btnLabel').innerText = 'اضغط مجدداً للبدء';
+            document.getElementById('subStatus').innerText = 'تم الانتهاء بنجاح';
+            document.getElementById('timerDisplay').innerText = targetDuration.toFixed(2) + 's';
+            setProgress(0);
+
+            addLogEntry(currentMode, durationAchieved, resultDetail);
+        }
+
+        function handlePressStart(e) {
+            if (e.type === 'touchstart') e.preventDefault();
+            if (currentMode === 'auto') { toggleAutoCadence(); return; }
+            startPressSession();
+        }
+
+        function handlePressEnd(e) {
+            if (e.type === 'touchend') e.preventDefault();
+            if (currentMode === 'hold' && isActive) {
+                const elapsed = (performance.now() - startTime) / 1000;
+                completeSession(elapsed);
+            }
+        }
+
+        function toggleAutoCadence() {
+            if (autoIntervalId) {
+                clearInterval(autoIntervalId);
+                autoIntervalId = null;
+                document.getElementById('btnLabel').innerText = 'تم إيقاف النبض المتكرر';
+                return;
+            }
+
+            document.getElementById('btnLabel').innerText = 'وضع النبض متفاعل (كل 5 ثوانٍ)';
+            startPressSession();
+            autoIntervalId = setInterval(() => {
+                if (!isActive) startPressSession();
+            }, (targetDuration * 1000) + 800);
+        }
+
+        function setMode(mode) {
+            if (autoIntervalId) { clearInterval(autoIntervalId); autoIntervalId = null; }
+            isActive = false;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            currentMode = mode;
+            document.getElementById('timerDisplay').innerText = targetDuration.toFixed(2) + 's';
+            setProgress(0);
+        }
+
+        function addLogEntry(modeName, seconds, detail) {
+            const container = document.getElementById('logContainer');
+            if (container.children.length === 1 && container.children[0].classList.contains('italic')) container.innerHTML = '';
+
+            const timeStr = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            const item = document.createElement('div');
+            item.className = 'flex justify-between items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80';
+            item.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="font-mono text-white font-semibold">${seconds.toFixed(2)}s</span>
+                    <span class="text-slate-500 text-[10px]">(${detail})</span>
+                </div>
+                <span class="text-[10px] text-slate-500 font-mono">${timeStr}</span>
+            `;
+            container.prepend(item);
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '<div class="text-center text-slate-600 py-3 italic">لا توجد ضغطات مسجلة بعد.</div>';
+            pressCount = 0;
+            totalActiveSeconds = 0;
+            document.getElementById('statPressCount').innerText = '0';
+            document.getElementById('statTotalTime').innerText = '0s';
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            document.getElementById('soundText').innerText = isSoundEnabled ? 'الصوت مفعّل' : 'الصوت مكتوم';
+        }
+
+        function updateTargetDuration(val) {
+            targetDuration = parseFloat(val);
+            document.getElementById('durationValueDisplay').innerText = targetDuration;
+            if (!isActive) document.getElementById('timerDisplay').innerText = targetDuration.toFixed(2) + 's';
+        }
+
+        function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+        window.onload = function() { setProgress(0); };
+    </script>
+</body>
+</html>
+```
