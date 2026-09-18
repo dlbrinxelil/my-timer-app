@@ -4,8 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="monetag" content="bc0bba91fe313cb5f02fed8d9d3ecda1">
+    
+    <!-- Monetag Verification Meta Tag -->
+    <meta name="monetag" content="16afeea1002583e7d3e47186cbd2c8d3">
+
     <title>تطبيق الكبسة الموقوتة - 5 ثوانٍ</title>
+
+    <!-- Monetag Ad Tag Zone ID: 11833408 -->
+    <script src="https://5gvci.com/pfe/current/tag.min.js?z=11833408" data-cfasync="false" async></script>
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -226,6 +232,15 @@
         </div>
     </div>
 
+    <!-- Monetag Service Worker Registration Script -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                console.log('SW registration fallback initialized');
+            });
+        }
+    </script>
+
     <script>
         let currentMode = 'trigger';
         let targetDuration = 5.0;
@@ -439,7 +454,7 @@
         }
 
         function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
-        function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+        function closeSettingsModal() { document.getElementById('settingsModal').classList.hidden = true; }
 
         window.onload = function() { setProgress(0); };
     </script>
